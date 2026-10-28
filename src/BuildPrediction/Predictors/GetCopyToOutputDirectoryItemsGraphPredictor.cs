@@ -82,7 +82,7 @@ namespace Microsoft.Build.Prediction.Predictors
                             string projectDepsFilePath = dependency.ProjectInstance.GetPropertyValue(GenerateBuildDependencyFilePredictor.ProjectDepsFilePathPropertyName);
                             if (!string.IsNullOrEmpty(projectDepsFilePath))
                             {
-                                predictionReporter.ReportInputFile(projectDepsFilePath);
+                                predictionReporter.ReportInputFile(Path.Combine(dependency.ProjectInstance.Directory, projectDepsFilePath));
                                 predictionReporter.ReportOutputFile(Path.Combine(outDir, Path.GetFileName(projectDepsFilePath)));
                             }
                         }
@@ -92,14 +92,14 @@ namespace Microsoft.Build.Prediction.Predictors
                             string projectRuntimeConfigFilePath = dependency.ProjectInstance.GetPropertyValue(GenerateRuntimeConfigurationFilesPredictor.ProjectRuntimeConfigFilePathPropertyName);
                             if (!string.IsNullOrEmpty(projectRuntimeConfigFilePath))
                             {
-                                predictionReporter.ReportInputFile(projectRuntimeConfigFilePath);
+                                predictionReporter.ReportInputFile(Path.Combine(dependency.ProjectInstance.Directory, projectRuntimeConfigFilePath));
                                 predictionReporter.ReportOutputFile(Path.Combine(outDir, Path.GetFileName(projectRuntimeConfigFilePath)));
                             }
 
                             string projectRuntimeConfigDevFilePath = dependency.ProjectInstance.GetPropertyValue(GenerateRuntimeConfigurationFilesPredictor.ProjectRuntimeConfigDevFilePathPropertyName);
                             if (!string.IsNullOrEmpty(projectRuntimeConfigDevFilePath))
                             {
-                                predictionReporter.ReportInputFile(projectRuntimeConfigDevFilePath);
+                                predictionReporter.ReportInputFile(Path.Combine(dependency.ProjectInstance.Directory, projectRuntimeConfigDevFilePath));
                                 predictionReporter.ReportOutputFile(Path.Combine(outDir, Path.GetFileName(projectRuntimeConfigDevFilePath)));
                             }
                         }
