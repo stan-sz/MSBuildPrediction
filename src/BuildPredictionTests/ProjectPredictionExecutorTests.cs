@@ -117,14 +117,13 @@ namespace Microsoft.Build.Prediction.Tests
                     int numPredictors = numPredictorCases[p];
                     tickResults[p] = new long[sparsenessPercentages.Length];
                     var predictors = new IProjectPredictor[numPredictors];
-                    int sparseIndex = 0;
-
                     for (int s = 0; s < sparsenessPercentages.Length; s++)
                     {
                         int sparsenessPercentage = sparsenessPercentages[s];
+                        int numSparsePredictors = numPredictors * sparsenessPercentage / 100;
                         for (int i = 0; i < numPredictors; i++)
                         {
-                            if (sparseIndex < sparsenessPercentage)
+                            if (i < numSparsePredictors)
                             {
                                 predictors[i] = new MockPredictor(null, null, null, null);
                             }
@@ -136,20 +135,20 @@ namespace Microsoft.Build.Prediction.Tests
                                     new[] { $@"{i}\outputFile" },
                                     new[] { $@"{i}\outputDirectory" });
                             }
-
-                            sparseIndex++;
-                            if (sparseIndex > sparsenessPercentage)
-                            {
-                                sparseIndex = 0;
-                            }
                         }
 
                         var executor = new ProjectPredictionExecutor(predictors);
                         Stopwatch sw = Stopwatch.StartNew();
-                        executor.PredictInputsAndOutputs(proj);
+                        ProjectPredictions predictions = executor.PredictInputsAndOutputs(proj);
                         sw.Stop();
                         tickResults[p][s] = sw.ElapsedTicks;
                         Console.WriteLine($"{numPredictors} @ {sparsenessPercentage}%: {sw.ElapsedTicks} ticks");
+
+                        int expectedPredictionCount = numPredictors - (numPredictors * sparsenessPercentage / 100);
+                        Assert.Equal(expectedPredictionCount, predictions.InputFiles.Count);
+                        Assert.Equal(expectedPredictionCount, predictions.InputDirectories.Count);
+                        Assert.Equal(expectedPredictionCount, predictions.OutputFiles.Count);
+                        Assert.Equal(expectedPredictionCount, predictions.OutputDirectories.Count);
                     }
                 }
             }

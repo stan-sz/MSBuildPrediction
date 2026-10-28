@@ -277,9 +277,8 @@ namespace Microsoft.Build.Prediction
             }
 
             // Normalize the path
-            string evaluatedIncludeFullPath = Path.GetFullPath(evaluatedInclude);
-
             string projectDir = item.Project.Directory;
+            string evaluatedIncludeFullPath = Path.GetFullPath(Path.Combine(projectDir, evaluatedInclude));
             bool projectDirHasTrailingSlash = projectDir[projectDir.Length - 1] == Path.DirectorySeparatorChar;
 
             // If the item is under the project dir, return the relative path from the project dir.

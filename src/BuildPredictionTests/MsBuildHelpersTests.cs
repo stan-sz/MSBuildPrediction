@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
+using System.IO;
 using System.Linq;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Execution;
@@ -76,6 +77,22 @@ namespace Microsoft.Build.Prediction.Tests
                     item.AddMetadata(propertyParts[0], propertyParts[1]);
                 }
             }
+
+            ProjectInstance projectInstance = TestHelpers.CreateProjectInstanceFromRootElement(projectRootElement);
+            ProjectItemInstance itemInstance = projectInstance.GetItems("Foo").Single();
+
+            Assert.Equal(expectedResult, itemInstance.GetTargetPath());
+        }
+
+        [Theory]
+        [InlineData(@".\Assets\Foo.xml", @"Assets\Foo.xml")]
+        [InlineData(@"Assets\..\Data\Foo.xml", @"Data\Foo.xml")]
+        [InlineData(@"..\External\Foo.xml", "Foo.xml")]
+        public void GetTargetPathUsesProjectDirectory(string itemIdentity, string expectedResult)
+        {
+            string projectPath = Path.Combine(Path.GetTempPath(), nameof(MsBuildHelpersTests), Guid.NewGuid().ToString(), "Test.proj");
+            ProjectRootElement projectRootElement = ProjectRootElement.Create(projectPath);
+            projectRootElement.AddItem("Foo", itemIdentity);
 
             ProjectInstance projectInstance = TestHelpers.CreateProjectInstanceFromRootElement(projectRootElement);
             ProjectItemInstance itemInstance = projectInstance.GetItems("Foo").Single();

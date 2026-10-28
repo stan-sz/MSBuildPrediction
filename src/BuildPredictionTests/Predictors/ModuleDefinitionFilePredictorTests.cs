@@ -15,7 +15,7 @@ namespace Microsoft.Build.Prediction.Tests.Predictors
         public void FindItems()
         {
             ProjectInstance projectInstance = CreateTestProjectInstance(@"project.vcxproj");
-            var expectedInputDirectories = new[]
+            var expectedInputFiles = new[]
             {
                 new PredictedItem("Link.def", nameof(ModuleDefinitionFilePredictor)),
                 new PredictedItem("Lib.def", nameof(ModuleDefinitionFilePredictor)),
@@ -25,8 +25,8 @@ namespace Microsoft.Build.Prediction.Tests.Predictors
                 .GetProjectPredictions(projectInstance)
                 .AssertPredictions(
                     projectInstance,
+                    expectedInputFiles.MakeAbsolute(Directory.GetCurrentDirectory()),
                     null,
-                    expectedInputDirectories.MakeAbsolute(Directory.GetCurrentDirectory()),
                     null,
                     null);
         }
@@ -35,6 +35,33 @@ namespace Microsoft.Build.Prediction.Tests.Predictors
         public void SkipOtherProjectTypes()
         {
             ProjectInstance projectInstance = CreateTestProjectInstance(@"project.csproj");
+            new ModuleDefinitionFilePredictor()
+                .GetProjectPredictions(projectInstance)
+                .AssertNoPredictions();
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData(" \t ")]
+        public void IgnoreEmptyModuleDefinitionFile(string moduleDefinitionFile)
+        {
+            ProjectRootElement projectRootElement = ProjectRootElement.Create("project.vcxproj");
+            foreach (string itemName in new[]
+            {
+                ModuleDefinitionFilePredictor.LinkItemName,
+                ModuleDefinitionFilePredictor.LibItemName,
+                ModuleDefinitionFilePredictor.ImpLibItemName,
+            })
+            {
+                ProjectItemElement item = projectRootElement.AddItem(itemName, itemName + ".lib");
+                if (moduleDefinitionFile != null)
+                {
+                    item.AddMetadata(ModuleDefinitionFilePredictor.ModuleDefinitionFileMetadata, moduleDefinitionFile);
+                }
+            }
+
+            ProjectInstance projectInstance = TestHelpers.CreateProjectInstanceFromRootElement(projectRootElement);
             new ModuleDefinitionFilePredictor()
                 .GetProjectPredictions(projectInstance)
                 .AssertNoPredictions();

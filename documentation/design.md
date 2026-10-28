@@ -47,6 +47,8 @@ For high-performance scenarios, use the overload of `ProjectPredictionExecutor.P
 ### Relative or Absolute Paths
 Predictors may report predictions either with absolute or project-relative paths.
 
+Project-relative paths are relative to the project associated with the prediction reporter, not the process's current working directory. Graph predictors reporting files from a referenced project must resolve those paths against the referenced project's directory before reporting them. This includes generated dependency and runtime configuration files as well as source items.
+
 `ProjectPredictions` predictions are normalized to be absolute paths. Absolute paths are detected on Windows using a fully-qualified drive letter and backslash, and by a leading / for Mac and Linux.
 
 When providing an implementation of `IProjectPredictionCollector`, the path the predictor provided (which may be absolute or project-relative) as well as the project's directory are provided so that implementor may normalize paths as desired, for example to be repository-relative.
