@@ -92,7 +92,7 @@ namespace Microsoft.Build.Prediction.Predictors
                         string projectDepsFilePath = projectInstance.GetPropertyValue(GenerateBuildDependencyFilePredictor.ProjectDepsFilePathPropertyName);
                         if (!string.IsNullOrEmpty(projectDepsFilePath))
                         {
-                            predictionReporter.ReportInputFile(projectDepsFilePath);
+                            predictionReporter.ReportInputFile(Path.Combine(projectInstance.Directory, projectDepsFilePath));
 
                             if (!string.IsNullOrEmpty(publishDir))
                             {
@@ -105,7 +105,7 @@ namespace Microsoft.Build.Prediction.Predictors
                         string publishDepsFilePath = GeneratePublishDependencyFilePredictor.GetEffectivePublishDepsFilePath(projectInstance);
                         if (!string.IsNullOrEmpty(publishDepsFilePath))
                         {
-                            predictionReporter.ReportInputFile(publishDepsFilePath);
+                            predictionReporter.ReportInputFile(Path.Combine(projectInstance.Directory, publishDepsFilePath));
 
                             if (!string.IsNullOrEmpty(publishDir))
                             {
@@ -120,7 +120,7 @@ namespace Microsoft.Build.Prediction.Predictors
                     string projectRuntimeConfigFilePath = projectInstance.GetPropertyValue(GenerateRuntimeConfigurationFilesPredictor.ProjectRuntimeConfigFilePathPropertyName);
                     if (!string.IsNullOrEmpty(projectRuntimeConfigFilePath))
                     {
-                        predictionReporter.ReportInputFile(projectRuntimeConfigFilePath);
+                        predictionReporter.ReportInputFile(Path.Combine(projectInstance.Directory, projectRuntimeConfigFilePath));
 
                         if (!string.IsNullOrEmpty(publishDir))
                         {

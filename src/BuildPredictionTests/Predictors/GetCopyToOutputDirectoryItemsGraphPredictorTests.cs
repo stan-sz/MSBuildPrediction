@@ -271,6 +271,50 @@ namespace Microsoft.Build.Prediction.Tests.Predictors
         }
 
         [Theory]
+        [InlineData(null)]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void DependencyRuntimeFilesUseDependencyDirectory(bool? absolutePaths)
+        {
+            string projectFile = Path.Combine(_rootDir, @"src\project.csproj");
+            ProjectRootElement project = ProjectRootElement.Create(projectFile);
+            project.AddProperty(GetCopyToOutputDirectoryItemsGraphPredictor.OutDirPropertyName, "bin");
+            project.AddItem("ProjectReference", @"..\dep\dep.csproj");
+
+            ProjectRootElement dependency = ProjectRootElement.Create(Path.Combine(_rootDir, @"dep\dep.csproj"));
+            dependency.AddProperty(GetCopyToOutputDirectoryItemsGraphPredictor.HasRuntimeOutputPropertyName, "true");
+            dependency.AddProperty(GenerateBuildDependencyFilePredictor.GenerateDependencyFilePropertyName, "true");
+            dependency.AddProperty(GenerateRuntimeConfigurationFilesPredictor.GenerateRuntimeConfigurationFilesPropertyName, "true");
+
+            var expectedInputFiles = new List<PredictedItem>();
+            var expectedOutputFiles = new List<PredictedItem>();
+            if (absolutePaths.HasValue)
+            {
+                string[] properties =
+                {
+                    GenerateBuildDependencyFilePredictor.ProjectDepsFilePathPropertyName,
+                    GenerateRuntimeConfigurationFilesPredictor.ProjectRuntimeConfigFilePathPropertyName,
+                    GenerateRuntimeConfigurationFilesPredictor.ProjectRuntimeConfigDevFilePathPropertyName,
+                };
+                string[] fileNames = { "dep.deps.json", "dep.runtimeconfig.json", "dep.runtimeconfig.dev.json" };
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    string relativePath = Path.Combine("bin", fileNames[i]);
+                    dependency.AddProperty(properties[i], absolutePaths.Value ? Path.Combine(dependency.DirectoryPath, relativePath) : relativePath);
+                    expectedInputFiles.Add(new PredictedItem(Path.Combine("dep", relativePath), nameof(GetCopyToOutputDirectoryItemsGraphPredictor)));
+                    expectedOutputFiles.Add(new PredictedItem(Path.Combine(@"src\bin", fileNames[i]), nameof(GetCopyToOutputDirectoryItemsGraphPredictor)));
+                }
+            }
+
+            project.Save();
+            dependency.Save();
+
+            new GetCopyToOutputDirectoryItemsGraphPredictor()
+                .GetProjectPredictions(projectFile)
+                .AssertPredictions(_rootDir, expectedInputFiles, null, expectedOutputFiles, null);
+        }
+
+        [Theory]
         [InlineData("Always")]
         [InlineData("PreserveNewest")]
         [InlineData("IfDifferent")]
