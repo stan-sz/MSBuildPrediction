@@ -238,6 +238,80 @@ namespace Microsoft.Build.Prediction.Tests.Predictors
                     null);
         }
 
+        [Theory]
+        [InlineData(@"a\b\c", @"a\b\c", true)]
+        [InlineData(@"a\b\x\b\c", @"a\b\x\b\c", false)]
+        [InlineData(@"a\b\?\b\c", @"a\b\x\b\c", false)]
+        public void FindArtifactsWithDeepDirectoryExcludes(string dirExclude, string excludedDirectory, bool rooted)
+        {
+            ProjectRootElement projectRootElement = ProjectRootElement.Create(Path.Combine(_rootDir, @"src\project.csproj"));
+            projectRootElement.AddProperty(ArtifactsSdkPredictor.UsingMicrosoftArtifactsSdkPropertyName, "true");
+            string sourceDirectory = Path.Combine(_rootDir, @"src\Artifacts");
+            var artifactItem = projectRootElement.AddItem(ArtifactsSdkPredictor.ArtifactsItemName, "Artifacts");
+            artifactItem.AddMetadata(ArtifactsSdkPredictor.DestinationFolderMetadata, Path.Combine(_rootDir, "out"));
+            artifactItem.AddMetadata(ArtifactsSdkPredictor.DirExcludeMetadata, rooted ? Path.Combine(sourceDirectory, dirExclude) : dirExclude);
+
+            var expectedInputFiles = new List<PredictedItem>();
+            var expectedOutputFiles = new List<PredictedItem>();
+            foreach (string directory in new[] { @"a\b\c", @"a\b\keep", @"a\b\x\b\c", @"a\b\x\b\keep" })
+            {
+                string relativeFile = Path.Combine(directory, "artifact.txt");
+                Directory.CreateDirectory(Path.Combine(sourceDirectory, directory));
+                File.WriteAllText(Path.Combine(sourceDirectory, relativeFile), "SomeContent");
+                if (directory != excludedDirectory)
+                {
+                    expectedInputFiles.Add(new PredictedItem(Path.Combine(@"src\Artifacts", relativeFile), nameof(ArtifactsSdkPredictor)));
+                    expectedOutputFiles.Add(new PredictedItem(Path.Combine("out", relativeFile), nameof(ArtifactsSdkPredictor)));
+                }
+            }
+
+            ProjectInstance projectInstance = TestHelpers.CreateProjectInstanceFromRootElement(projectRootElement);
+            new ArtifactsSdkPredictor()
+                .GetProjectPredictions(projectInstance)
+                .AssertPredictions(
+                    projectInstance,
+                    expectedInputFiles.MakeAbsolute(_rootDir),
+                    null,
+                    expectedOutputFiles.MakeAbsolute(_rootDir),
+                    null);
+        }
+
+        [Theory]
+        [InlineData("*;*.txt")]
+        [InlineData("*.txt;*")]
+        [InlineData("*;artifact.txt")]
+        [InlineData("artifact.txt;*")]
+        public void FindAllArtifactsWhenFileMatchIncludesStar(string fileMatch)
+        {
+            ProjectRootElement projectRootElement = ProjectRootElement.Create(Path.Combine(_rootDir, @"src\project.csproj"));
+            projectRootElement.AddProperty(ArtifactsSdkPredictor.UsingMicrosoftArtifactsSdkPropertyName, "true");
+            var artifactItem = projectRootElement.AddItem(ArtifactsSdkPredictor.ArtifactsItemName, "Artifacts");
+            artifactItem.AddMetadata(ArtifactsSdkPredictor.DestinationFolderMetadata, Path.Combine(_rootDir, "out"));
+            artifactItem.AddMetadata(ArtifactsSdkPredictor.FileMatchMetadata, fileMatch);
+
+            Directory.CreateDirectory(Path.Combine(_rootDir, @"src\Artifacts"));
+            File.WriteAllText(Path.Combine(_rootDir, @"src\Artifacts\artifact.txt"), "SomeContent");
+            File.WriteAllText(Path.Combine(_rootDir, @"src\Artifacts\image.jpg"), "SomeContent");
+
+            ProjectInstance projectInstance = TestHelpers.CreateProjectInstanceFromRootElement(projectRootElement);
+            new ArtifactsSdkPredictor()
+                .GetProjectPredictions(projectInstance)
+                .AssertPredictions(
+                    projectInstance,
+                    new[]
+                    {
+                        new PredictedItem(@"src\Artifacts\artifact.txt", nameof(ArtifactsSdkPredictor)),
+                        new PredictedItem(@"src\Artifacts\image.jpg", nameof(ArtifactsSdkPredictor)),
+                    }.MakeAbsolute(_rootDir),
+                    null,
+                    new[]
+                    {
+                        new PredictedItem(@"out\artifact.txt", nameof(ArtifactsSdkPredictor)),
+                        new PredictedItem(@"out\image.jpg", nameof(ArtifactsSdkPredictor)),
+                    }.MakeAbsolute(_rootDir),
+                    null);
+        }
+
         [Fact]
         public void FindArtifactsForExistingDirectoryNotRecursive()
         {
