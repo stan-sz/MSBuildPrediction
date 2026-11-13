@@ -49,7 +49,7 @@ namespace Microsoft.Build.Prediction.Predictors
                 string moduleDefinitionFile = item.GetMetadataValue(ModuleDefinitionFileMetadata).Trim();
                 if (!string.IsNullOrEmpty(moduleDefinitionFile) && reportedInputs.Add(moduleDefinitionFile))
                 {
-                    reporter.ReportInputDirectory(moduleDefinitionFile);
+                    reporter.ReportInputFile(moduleDefinitionFile);
                 }
             }
         }

@@ -190,7 +190,7 @@ namespace Microsoft.Build.Prediction.Predictors
                     string childDestinationSubDirectory = !string.IsNullOrEmpty(destinationSubDirectory)
                         ? Path.Combine(destinationSubDirectory, childSourceName)
                         : childSourceName;
-                    if (matcher.IsMatch(childDestinationSubDirectory, destinationSubDirectory, isFile: false))
+                    if (matcher.IsMatch(childSourceName, destinationSubDirectory, isFile: false))
                     {
                         ProcessDirectory(
                             matcher,
@@ -256,7 +256,7 @@ namespace Microsoft.Build.Prediction.Predictors
 
                 // Optimization to only enumerate files which match the pattern.
                 // This can only be done if there's exactly one pattern though.
-                SearchPattern = _fileMatches.Count + _fileRegexMatches.Count == 1
+                SearchPattern = !_doMatchAll && _fileMatches.Count + _fileRegexMatches.Count == 1
                     ? _fileMatches.Count == 1
                         ? _fileMatches[0]
                         : fileWildcardMatch

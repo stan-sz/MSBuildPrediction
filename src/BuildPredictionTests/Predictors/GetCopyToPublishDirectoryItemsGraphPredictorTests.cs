@@ -159,7 +159,6 @@ namespace Microsoft.Build.Prediction.Tests.Predictors
             string projectFile = Path.Combine(_rootDir, @"src\project.csproj");
             ProjectRootElement projectRootElement = ProjectRootElement.Create(projectFile);
             projectRootElement.AddProperty(GetCopyToPublishDirectoryItemsGraphPredictor.PublishDirPropertyName, @"bin\Publish");
-            projectRootElement.AddProperty(GetCopyToPublishDirectoryItemsGraphPredictor.PublishDirPropertyName, @"bin\Publish");
             projectRootElement.AddProperty(GetCopyToPublishDirectoryItemsGraphPredictor.SupportsDeployOnBuildPropertyName, "true");
             projectRootElement.AddProperty(GetCopyToPublishDirectoryItemsGraphPredictor.DeployOnBuildPropertyName, "true");
 
@@ -211,6 +210,53 @@ namespace Microsoft.Build.Prediction.Tests.Predictors
                     null,
                     expectedOutputFiles,
                     null);
+        }
+
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData(null, true)]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public void DependencyRuntimeFilesUseDependencyDirectory(bool? absolutePaths, bool useBuildDependencyFile)
+        {
+            string projectFile = Path.Combine(_rootDir, @"src\project.csproj");
+            ProjectRootElement project = ProjectRootElement.Create(projectFile);
+            project.DefaultTargets = "Publish";
+            project.AddProperty(GetCopyToPublishDirectoryItemsGraphPredictor.PublishDirPropertyName, @"bin\Publish");
+            project.AddItem("ProjectReference", @"..\dep\dep.csproj");
+
+            ProjectRootElement dependency = ProjectRootElement.Create(Path.Combine(_rootDir, @"dep\dep.csproj"));
+            dependency.AddProperty(GetCopyToOutputDirectoryItemsGraphPredictor.HasRuntimeOutputPropertyName, "true");
+            dependency.AddProperty(GenerateBuildDependencyFilePredictor.GenerateDependencyFilePropertyName, "true");
+            dependency.AddProperty(GenerateRuntimeConfigurationFilesPredictor.GenerateRuntimeConfigurationFilesPropertyName, "true");
+            dependency.AddProperty(GeneratePublishDependencyFilePredictor.PublishTrimmedPropertyName, (!useBuildDependencyFile).ToString());
+
+            var expectedInputFiles = new List<PredictedItem>();
+            var expectedOutputFiles = new List<PredictedItem>();
+            if (absolutePaths.HasValue)
+            {
+                string depsPath = Path.Combine(useBuildDependencyFile ? "bin" : "publish", "dep.deps.json");
+                string runtimePath = Path.Combine("bin", "dep.runtimeconfig.json");
+                dependency.AddProperty(
+                    useBuildDependencyFile ? GenerateBuildDependencyFilePredictor.ProjectDepsFilePathPropertyName : GeneratePublishDependencyFilePredictor.PublishDepsFilePathPropertyName,
+                    absolutePaths.Value ? Path.Combine(dependency.DirectoryPath, depsPath) : depsPath);
+                dependency.AddProperty(
+                    GenerateRuntimeConfigurationFilesPredictor.ProjectRuntimeConfigFilePathPropertyName,
+                    absolutePaths.Value ? Path.Combine(dependency.DirectoryPath, runtimePath) : runtimePath);
+                expectedInputFiles.Add(new PredictedItem(Path.Combine("dep", depsPath), nameof(GetCopyToPublishDirectoryItemsGraphPredictor)));
+                expectedInputFiles.Add(new PredictedItem(Path.Combine("dep", runtimePath), nameof(GetCopyToPublishDirectoryItemsGraphPredictor)));
+                expectedOutputFiles.Add(new PredictedItem(@"src\bin\Publish\dep.deps.json", nameof(GetCopyToPublishDirectoryItemsGraphPredictor)));
+                expectedOutputFiles.Add(new PredictedItem(@"src\bin\Publish\dep.runtimeconfig.json", nameof(GetCopyToPublishDirectoryItemsGraphPredictor)));
+            }
+
+            project.Save();
+            dependency.Save();
+
+            new GetCopyToPublishDirectoryItemsGraphPredictor()
+                .GetProjectPredictions(projectFile)
+                .AssertPredictions(_rootDir, expectedInputFiles, null, expectedOutputFiles, null);
         }
 
         private ProjectRootElement CreateDependencyProject(string projectName, bool shouldCopy)
